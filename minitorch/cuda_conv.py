@@ -241,9 +241,3 @@ class Conv1dCudaFun(Function):
         )
 
         return grad_input, grad_weight
-
-        
-
-    
-
-
