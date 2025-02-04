@@ -75,9 +75,6 @@ class CNNSentimentKim(minitorch.Module):
         y = [conv1d(embeddings) for conv1d in self.conv1d_layers]  # [B, feature_map_size, W]
         y = [z.relu() for z in y] # [B, feature_map_size, W]
         y = minitorch.max(y[0], 2) + minitorch.max(y[1], 2) + minitorch.max(y[2], 2) # [B, feature_map_size, 1]
-        # y = self.conv1d(embeddings) # [B, feature_map_size, W]
-        # y = y.relu()  # [B, feature_map_size, W]
-        # y = minitorch.max(y, 2) # [B, feature_map_size, 1]
         y = y.view(batch, self.feature_map_size)  # [B, feature_map_size]
         y = self.linear(y)  # [B, CLASS]
         y = y.relu()        # [B, CLASS]
@@ -280,7 +277,7 @@ if __name__ == "__main__":
         validation_size,
     )
     model_trainer = SentenceSentimentTrain(
-        CNNSentimentKim(feature_map_size=100, filter_sizes=[3, 4, 5], dropout=0.25)
+        CNNSentimentKim(feature_map_size=100, filter_sizes=[3, 4, 5], dropout=0.0)
     )
     model_trainer.train(
         (X_train, y_train),
