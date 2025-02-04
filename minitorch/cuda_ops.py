@@ -1,6 +1,8 @@
 # type: ignore
 # Currently pyright doesn't support numba.cuda
 
+# TODO(lizhi): analyze if anything can be optimized.
+
 from typing import Callable, Optional, TypeVar, Any
 
 import numba

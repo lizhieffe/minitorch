@@ -309,17 +309,6 @@ class Conv1d(Function):
 
         input.f.conv1d(*output.tuple(), output.size, *input.tuple(), *weight.tuple(), False)
 
-        # # One block per batch, extra rows, extra col
-        # blockspergrid = (
-        #     (output.shape[0] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        #     (output.shape[1] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        #     (output.shape[2] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        # )
-        # threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK, THREADS_PER_BLOCK)
-        # tensor_conv1d_cuda[blockspergrid, threadsperblock](
-        #     *output.tuple(), output.size, *input.tuple(), *weight.tuple(), False
-        # )
-
         return output
 
     @staticmethod
@@ -331,19 +320,6 @@ class Conv1d(Function):
         new_input = input.permute(1, 0, 2)
         new_grad_output = grad_output.permute(1, 0, 2)
 
-        # blockspergrid = (
-        #     (grad_weight.shape[0] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        #     (grad_weight.shape[1] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        #     (grad_weight.shape[2] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        # )
-        # threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK, THREADS_PER_BLOCK)
-        # tensor_conv1d_cuda[blockspergrid, threadsperblock](
-        #     *grad_weight.tuple(),
-        #     grad_weight.size,
-        #     *new_input.tuple(),
-        #     *new_grad_output.tuple(),
-        #     False,
-        # )
         input.f.conv1d(
             *grad_weight.tuple(),
             grad_weight.size,
@@ -356,17 +332,6 @@ class Conv1d(Function):
 
         grad_input = input.zeros((batch, in_channels, w))
         new_weight = weight.permute(1, 0, 2)
-
-
-        # blockspergrid = (
-        #     (grad_input.shape[0] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        #     (grad_input.shape[1] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        #     (grad_input.shape[2] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
-        # )
-        # threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK, THREADS_PER_BLOCK)
-        # tensor_conv1d_cuda[blockspergrid, threadsperblock](
-        #     *grad_input.tuple(), grad_input.size, *grad_output.tuple(), *new_weight.tuple(), True
-        # )
         input.f.conv1d(*grad_input.tuple(), grad_input.size, *grad_output.tuple(), *new_weight.tuple(), True)
 
         return grad_input, grad_weight
@@ -483,7 +448,6 @@ def grad_central_difference(
 
 def grad_check(f: Any, *vals: Tensor) -> None:
     for x in vals:
-        print(f"===lizhi tensor_functions grad_check {x=}")
         x.requires_grad_(True)
         x.zero_grad_()
     random.seed(10)
