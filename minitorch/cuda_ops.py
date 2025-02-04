@@ -4,6 +4,10 @@
 from typing import Callable, Optional, TypeVar, Any
 
 import numba
+
+from numba import config
+config.CUDA_ENABLE_PYNVJITLINK = 1
+
 from numba import cuda
 from numba.cuda import jit as _jit
 from .tensor import Tensor
