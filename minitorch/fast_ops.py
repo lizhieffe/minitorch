@@ -14,12 +14,14 @@ from .tensor_data import (
     to_index,
 )
 from .tensor_ops import MapProto, TensorOps
+from .fast_conv import tensor_conv1d
 
 if TYPE_CHECKING:
     from typing import Callable, Optional
 
     from .tensor import Tensor
     from .tensor_data import Index, Shape, Storage, Strides
+
 
 # TIP: Use `NUMBA_DISABLE_JIT=1 pytest tests/ -m task3_1` to run these tests without JIT.
 
@@ -136,6 +138,21 @@ class FastOps(TensorOps):
             out = out.view(out.shape[1], out.shape[2])
         return out
 
+    @staticmethod
+    def conv1d(
+        out: Storage,
+        out_shape: Shape,
+        out_strides: Strides,
+        out_size: int,
+        input: Storage,
+        input_shape: Shape,
+        input_strides: Strides,
+        weight: Storage,
+        weight_shape: Shape,
+        weight_strides: Strides,
+        reverse: bool,
+    ) -> None:
+        tensor_conv1d(out, out_shape, out_strides, out_size, input, input_shape, input_strides, weight, weight_shape, weight_strides, reverse)
 
 # Implementations
 
@@ -396,11 +413,9 @@ def _tensor_matrix_multiply(
             b_pos = index_to_position(b_idx, b_strides)
             b_val = b_storage[b_pos]
 
-            
             inner_sum += (a_val * b_val)
 
         out[i] = inner_sum
-
 
 tensor_matrix_multiply = njit(_tensor_matrix_multiply, parallel=True)
 assert tensor_matrix_multiply is not None

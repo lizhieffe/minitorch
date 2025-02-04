@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+# from . import operators, Conv1d
 from . import operators
+
 from .autodiff import Context, Variable, backpropagate
 from .tensor_data import TensorData
 from .tensor_functions import (
@@ -31,6 +33,7 @@ from .tensor_functions import (
     Sum,
     View,
     tensor,
+    Conv1d,
 )
 
 if TYPE_CHECKING:
@@ -387,3 +390,5 @@ class Tensor:
         Reset the derivative on this variable.
         """
         self.grad = None
+
+new_conv1d = Conv1d.apply

@@ -283,6 +283,93 @@ class MatMul(Function):
             grad_output.f.matrix_multiply(transpose(t1), grad_output),
         )
 
+class Conv1d(Function):
+    @staticmethod
+    def forward(ctx: Context, input: Tensor, weight: Tensor) -> Tensor:
+        """Compute a 1D Convolution
+
+        Args:
+        ----
+            ctx : Context
+            input : batch x in_channel x h x w
+            weight : out_channel x in_channel x kh x kw
+
+        Returns:
+        -------
+            batch x out_channel x h x w
+
+        """
+        ctx.save_for_backward(input, weight)
+        batch, in_channels, w = input.shape
+        out_channels, in_channels2, kw = weight.shape
+        assert in_channels == in_channels2
+
+        # Run convolution
+        output = input.zeros((batch, out_channels, w))
+
+        input.f.conv1d(*output.tuple(), output.size, *input.tuple(), *weight.tuple(), False)
+
+        # # One block per batch, extra rows, extra col
+        # blockspergrid = (
+        #     (output.shape[0] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        #     (output.shape[1] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        #     (output.shape[2] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        # )
+        # threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK, THREADS_PER_BLOCK)
+        # tensor_conv1d_cuda[blockspergrid, threadsperblock](
+        #     *output.tuple(), output.size, *input.tuple(), *weight.tuple(), False
+        # )
+
+        return output
+
+    @staticmethod
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+        input, weight = ctx.saved_values
+        batch, in_channels, w = input.shape
+        out_channels, in_channels, kw = weight.shape
+        grad_weight = grad_output.zeros((in_channels, out_channels, kw))
+        new_input = input.permute(1, 0, 2)
+        new_grad_output = grad_output.permute(1, 0, 2)
+
+        # blockspergrid = (
+        #     (grad_weight.shape[0] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        #     (grad_weight.shape[1] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        #     (grad_weight.shape[2] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        # )
+        # threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK, THREADS_PER_BLOCK)
+        # tensor_conv1d_cuda[blockspergrid, threadsperblock](
+        #     *grad_weight.tuple(),
+        #     grad_weight.size,
+        #     *new_input.tuple(),
+        #     *new_grad_output.tuple(),
+        #     False,
+        # )
+        input.f.conv1d(
+            *grad_weight.tuple(),
+            grad_weight.size,
+            *new_input.tuple(),
+            *new_grad_output.tuple(),
+            False,
+        )
+
+        grad_weight = grad_weight.permute(1, 0, 2)
+
+        grad_input = input.zeros((batch, in_channels, w))
+        new_weight = weight.permute(1, 0, 2)
+
+
+        # blockspergrid = (
+        #     (grad_input.shape[0] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        #     (grad_input.shape[1] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        #     (grad_input.shape[2] + (THREADS_PER_BLOCK - 1)) // THREADS_PER_BLOCK,
+        # )
+        # threadsperblock = (THREADS_PER_BLOCK, THREADS_PER_BLOCK, THREADS_PER_BLOCK)
+        # tensor_conv1d_cuda[blockspergrid, threadsperblock](
+        #     *grad_input.tuple(), grad_input.size, *grad_output.tuple(), *new_weight.tuple(), True
+        # )
+        input.f.conv1d(*grad_input.tuple(), grad_input.size, *grad_output.tuple(), *new_weight.tuple(), True)
+
+        return grad_input, grad_weight
 
 # Helpers for Constructing tensors
 def zeros(shape: UserShape, backend: TensorBackend = SimpleBackend) -> Tensor:

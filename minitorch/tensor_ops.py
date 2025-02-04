@@ -49,6 +49,22 @@ class TensorOps:
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
         raise NotImplementedError("Not implemented in this assignment")
 
+    @staticmethod
+    def conv1d(
+        out: Storage,
+        out_shape: Shape,
+        out_strides: Strides,
+        out_size: int,
+        input: Storage,
+        input_shape: Shape,
+        input_strides: Strides,
+        weight: Storage,
+        weight_shape: Shape,
+        weight_strides: Strides,
+        reverse: bool,
+    ) -> None:
+        raise NotImplementedError("Not implemented in this assignment")
+
     cuda = False
 
 
@@ -93,6 +109,7 @@ class TensorBackend:
         self.add_reduce = ops.reduce(operators.add, 0.0)
         self.mul_reduce = ops.reduce(operators.mul, 1.0)
         self.matrix_multiply = ops.matrix_multiply
+        self.conv1d = ops.conv1d
         self.cuda = ops.cuda
 
 
