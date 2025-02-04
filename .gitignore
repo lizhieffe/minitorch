@@ -136,3 +136,6 @@ pyodide
 
 # venv
 pyvenv.cfg
+
+# pycharm
+.idea
