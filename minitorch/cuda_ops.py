@@ -19,6 +19,7 @@ from .tensor_data import (
     to_index,
 )
 from .tensor_ops import MapProto, TensorOps
+from .cuda_conv import tensor_conv1d_cuda
 
 FakeCUDAKernel = Any
 
@@ -142,6 +143,21 @@ class CudaOps(TensorOps):
             out = out.view(out.shape[1], out.shape[2])
         return out
 
+    @staticmethod
+    def conv1d(
+            out: Storage,
+            out_shape: Shape,
+            out_strides: Strides,
+            out_size: int,
+            input: Storage,
+            input_shape: Shape,
+            input_strides: Strides,
+            weight: Storage,
+            weight_shape: Shape,
+            weight_strides: Strides,
+            reverse: bool,
+    ) -> None:
+        tensor_conv1d_cuda(out, out_shape, out_strides, out_size, input, input_shape, input_strides, weight, weight_shape, weight_strides, reverse)
 
 # Implement
 
