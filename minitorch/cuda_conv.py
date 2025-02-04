@@ -5,6 +5,7 @@ from typing import Callable, Optional, TypeVar, Any, Tuple
 
 import numba
 
+# Required to use cuda in numba. https://github.com/googlecolab/colabtools/issues/5081
 from numba import config
 config.CUDA_ENABLE_PYNVJITLINK = 1
 

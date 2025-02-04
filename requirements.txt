@@ -1,7 +1,7 @@
 colorama==0.4.3
 hypothesis == 6.54
 numba == 0.60
-numba-cuda == 0.4.0
+numba-cuda == 0.4.0 # Required to use cuda in numba. https://github.com/googlecolab/colabtools/issues/5081
 numpy == 2.0.0
 #numpy == 1.26.4
 pre-commit == 2.20.0
