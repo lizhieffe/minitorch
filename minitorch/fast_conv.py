@@ -112,64 +112,6 @@ def _tensor_conv1d(
 
 tensor_conv1d = njit(_tensor_conv1d, parallel=True)
 
-
-# class Conv1dFun(Function):
-#     @staticmethod
-#     def forward(ctx: Context, input: Tensor, weight: Tensor) -> Tensor:
-#         """Compute a 1D Convolution
-#
-#         Args:
-#         ----
-#             ctx : Context
-#             input : batch x in_channel x h x w
-#             weight : out_channel x in_channel x kh x kw
-#
-#         Returns:
-#         -------
-#             batch x out_channel x h x w
-#
-#         """
-#         ctx.save_for_backward(input, weight)
-#         batch, in_channels, w = input.shape
-#         out_channels, in_channels2, kw = weight.shape
-#         assert in_channels == in_channels2
-#
-#         output = input.zeros((batch, out_channels, w))
-#         tensor_conv1d(*output.tuple(), output.size, *input.tuple(), *weight.tuple(), False)
-#         return output
-#
-#     @staticmethod
-#     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
-#         input, weight = ctx.saved_values
-#         batch, in_channels, w = input.shape
-#         out_channels, in_channels, kw = weight.shape
-#         grad_weight = grad_output.zeros((in_channels, out_channels, kw))
-#         new_input = input.permute(1, 0, 2)
-#         new_grad_output = grad_output.permute(1, 0, 2)
-#         tensor_conv1d(  # type: ignore[call-arg]
-#             *grad_weight.tuple(),
-#             grad_weight.size,
-#             *new_input.tuple(),
-#             *new_grad_output.tuple(),
-#             False,
-#         )
-#         grad_weight = grad_weight.permute(1, 0, 2)
-#
-#         grad_input = input.zeros((batch, in_channels, w))
-#         new_weight = weight.permute(1, 0, 2)
-#         tensor_conv1d(  # type: ignore[call-arg]
-#             *grad_input.tuple(),
-#             grad_input.size,
-#             *grad_output.tuple(),
-#             *new_weight.tuple(),
-#             True,
-#         )
-#         return grad_input, grad_weight
-#
-#
-# conv1d = Conv1dFun.apply
-
-
 def _tensor_conv2d(
     out: Storage,
     out_shape: Shape,
