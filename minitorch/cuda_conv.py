@@ -1,12 +1,14 @@
 # type: ignore
 # Currently pyright doesn't support numba.cuda
 
+import time
 from typing import Callable, Optional, TypeVar, Any, Tuple
 
 import numba
 
 # Required to use cuda in numba. https://github.com/googlecolab/colabtools/issues/5081
 from numba import config
+
 config.CUDA_ENABLE_PYNVJITLINK = 1
 
 from numba import cuda
@@ -24,10 +26,7 @@ from .tensor_data import (
     shape_broadcast,
     to_index,
 )
-from .tensor_ops import MapProto, TensorOps
 from .tensor_functions import Function
-from .fast_conv import tensor_conv1d
-import time
 
 FakeCUDAKernel = Any
 
@@ -68,7 +67,7 @@ def _tensor_conv1d_cuda(
 ) -> None:
     """
 
-  
+
     The grid x, y, z axis corresponds to the [B, T, COUT] dim of the output.
 
 
@@ -83,7 +82,7 @@ def _tensor_conv1d_cuda(
     batch, in_channels, width = input_shape
     out_channels, _, k_width = weight_shape
     _, _, out_width = out_shape
-    # Note, width and out_width doesn't necessarily to be equal. E.g. in the 
+    # Note, width and out_width doesn't necessarily to be equal. E.g. in the
     # first _tensor_conv1d_cuda() call in the backward(), the width >= out_width.
     assert batch == out_shape[0]
     assert out_channels == out_shape[1]
@@ -111,7 +110,7 @@ def _tensor_conv1d_cuda(
     weight_shared = cuda.shared.array((BLOCK_DIM, BLOCK_DIM), numba.float64) # [KW * C_IN, C_OUT]
 
     total = 0.0
-    for conv_i in range(0, k_width * in_channels, BLOCK_DIM):        
+    for conv_i in range(0, k_width * in_channels, BLOCK_DIM):
 
         if pk + conv_i < k_width * in_channels and i < batch:
             k_width_i = (pk + conv_i) // in_channels
@@ -123,15 +122,15 @@ def _tensor_conv1d_cuda(
 
                 if j - k_width_i >= 0:
                     input_pos = input_batch_stride * i + input_strides[1] * in_channels_i + input_strides[2] * (j - k_width_i)
-                    input_shared[i][j][pk] = input[input_pos]
+                    input_shared[pi][pj][pk] = input[input_pos]
                 else:
-                    input_shared[i][j][pk] = 0.0
+                    input_shared[pi][pj][pk] = 0.0
             else:
                 if j + k_width_i < width:
                     input_pos = input_batch_stride * i + input_strides[1] * in_channels_i + input_strides[2] * (j + k_width_i)
-                    input_shared[i][j][pk] = input[input_pos]
+                    input_shared[pi][pj][pk] = input[input_pos]
                 else:
-                    input_shared[i][j][pk] = 0.0
+                    input_shared[pi][pj][pk] = 0.0
 
         if pi + conv_i < k_width * in_channels and k < out_channels and pj == 0:
             k_width_i = (pi + conv_i) // in_channels
@@ -142,7 +141,7 @@ def _tensor_conv1d_cuda(
                 k_width_i = k_width - k_width_i - 1
 
             weight_pos = weight_strides[0] * k + weight_strides[1] * in_channels_i + weight_strides[2] * k_width_i
-            weight_shared[pi][k] = weight[weight_pos]
+            weight_shared[pi][pk] = weight[weight_pos]
 
         numba.cuda.syncthreads()
 
@@ -150,11 +149,11 @@ def _tensor_conv1d_cuda(
         # When using Numba simulator, comment out syncthreads() and use sleep.
         #
         # time.sleep(1)
-        
+
         if i < batch and k < out_channels:
             for iii in range(BLOCK_DIM):
                 if iii + conv_i < k_width * in_channels:
-                    total += input_shared[i][j][iii] * weight_shared[iii][k]
+                    total += input_shared[pi][pj][iii] * weight_shared[iii][pk]
         # This is needed because other thread may enter the next loop earlier and change the shared mem.
         numba.cuda.syncthreads()
 
@@ -166,6 +165,177 @@ def _tensor_conv1d_cuda(
     if i < batch and k < out_channels:
         out_pos = out_strides[0] * i + out_strides[1] * k + out_strides[2] * j
         out[out_pos] = total
+
+
+
+
+
+
+# Copied https://github.com/Cornell-Tech-ML/mle-module-4-93c3173d-HarshiniDonepudi/blob/master/cuda_conv.py
+
+# def tensor_conv1d(
+#         out: Tensor,
+#         out_shape: Shape,
+#         out_strides: Strides,
+#         out_size: int,
+#         input: Tensor,
+#         input_shape: Shape,
+#         input_strides: Strides,
+#         weight: Tensor,
+#         weight_shape: Shape,
+#         weight_strides: Strides,
+#         reverse: bool,
+# ) -> None:
+#     """
+#     1D Cuda Convolution implementation.
+#     Given input tensor of
+#        `batch, in_channels, width`
+#     and weight tensor
+#        `out_channels, in_channels, k_width`
+#     Computes padded output of
+#        `batch, out_channels, width`
+#     `reverse` decides if weight is anchored left (False) or right.
+#     (See diagrams)
+#     Args:
+#         out (array): storage for `out` tensor.
+#         out_shape (array): shape for `out` tensor.
+#         out_strides (array): strides for `out` tensor.
+#         out_size (int): size of the `out` tensor.
+#         input (array): storage for `input` tensor.
+#         input_shape (array): shape for `input` tensor.
+#         input_strides (array): strides for `input` tensor.
+#         weight (array): storage for `input` tensor.
+#         weight_shape (array): shape for `input` tensor.
+#         weight_strides (array): strides for `input` tensor.
+#         reverse (bool): anchor weight at left or right
+#     """
+#     batch_, out_channels, out_width = out_shape
+#     batch, in_channels, width = input_shape
+#     out_channels_, in_channels_, kw = weight_shape
+#
+#     assert (
+#             batch == batch_
+#             and in_channels == in_channels_
+#             and out_channels == out_channels_
+#     )
+#     s1 = weight_strides
+#     s2 = input_strides
+#
+#     # Block arrangement is going to be size of output: (size_out, )
+#     pos = cuda.blockIdx.x * cuda.blockDim.x + cuda.threadIdx.x
+#     i = cuda.local.array(MAX_DIMS, numba.int32)
+#     to_index(pos, out_shape, i)
+#
+#     # Im going to have kw * in_channels threads per block: [in_channels, kw]
+#     # Initialize the shared memories
+#     Shared_Input = cuda.local.array((in_channels_, kw), numba.int32)
+#     Shared_Weights = cuda.local.array((in_channels_, kw), numba.int32)
+#     # And get the local indexes of the threads
+#     local_i = cuda.threadIdx.x
+#     local_j = cuda.threadIdx.y
+#
+#     # Time to fill the memories. The weight one is straightforward
+#     Shared_Weights[local_i, local_j] = weight[
+#         i[1] * s1[0] + local_i * s1[1] + local_j * s1[2]
+#         ]
+#     # The input memory is not as straightforward
+#     if reverse is False:
+#         Pos = i[2] + local_j
+#         if Pos < width:
+#             Shared_Input[local_i, local_j] = input[
+#                 i[0] * s2[0] + local_i * s2[1] + Pos * s2[2]
+#                 ]
+#         else:
+#             Shared_Input[local_i, local_j] = 0
+#         # Once the shared memories are initialized we just compute the sum and accumulate
+#         Res = 0.0
+#         # Wait for all threads to reach this point
+#         numba.cuda.syncthreads()
+#         Res += Shared_Input[local_i, local_j] * Shared_Weights[local_i, local_j]
+#     else:
+#         Pos = id[2] - local_i
+#         if Pos >= 0:
+#             Shared_Input[local_i, local_j] = input[
+#                 id[0] * s2[0] + local_i * s2[1] + Pos * s2[2]
+#                 ]
+#         else:
+#             Shared_Input[local_i, local_j] = 0
+#         Res = 0.0
+#         # Wait for all threads to reach this point
+#         numba.cuda.syncthreads()
+#         Res += Shared_Input[local_i, local_j] * Shared_Weights[local_i, local_j]
+#
+#
+# class Conv1dFun(Function):
+#     """
+#     Compute a 1D Convolution.
+#     Args:
+#         ctx: Context.
+#         input (:class:'Tensor'): batch x in_channel x h x w.
+#         weight (:class:'Tensor'): out_channel x in_channel x kh x kw.
+#     Returns:
+#         (:class:'Tensor'): batch x out_channel x h x w.
+#     """
+#
+#     @staticmethod
+#     def forward(ctx: Context, input: Tensor, weight: Tensor) -> Tensor:
+#         ctx.save_for_backward(input, weight)
+#         batch, in_channels, w = input.shape
+#         out_channels, in_channels2, kw = weight.shape
+#         assert in_channels == in_channels2
+#
+#         # Run convolution
+#         output = input.zeros((batch, out_channels, w))
+#         tensor_conv1d(
+#             *output.tuple(), output.size, *input.tuple(), *weight.tuple(), False
+#         )
+#         return output
+#
+#     @staticmethod
+#     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
+#         input, weight = ctx.saved_values
+#         batch, in_channels, w = input.shape
+#         out_channels, in_channels2, kw = weight.shape
+#         assert in_channels == in_channels2
+#
+#         grad_weight = grad_output.zeros((out_channels, in_channels, kw))
+#         new_input = input.permute(1, 0, 2)
+#         new_grad_output = grad_output.permute(1, 0, 2)
+#         tensor_conv1d(
+#             grad_weight, new_grad_output, True
+#         grad_weight.shape,
+#         grad_weight.strides,
+#         grad_weight.size,
+#         new_input,
+#         new_input.shape,
+#         new_input.strides,
+#         new_grad_output,
+#         new_grad_output.shape,
+#         new_grad_output.strides,
+#         False,
+#         )
+#         grad_weight = grad_weight.permute(1, 0, 2)
+#         grad_input = input.zeros((batch, in_channels, w))
+#         new_weight = weight.permute(1, 0, 2)
+#         tensor_conv1d(
+#             grad_input,
+#             grad_input.shape,
+#             grad_input.strides,
+#             grad_input.size,
+#             grad_output,
+#             grad_output.shape,
+#             grad_output.strides,
+#             new_weight,
+#             new_weight.shape,
+#             new_weight.strides,
+#             True,
+#         )
+#         return grad_input, grad_weight
+#
+#
+# conv1d = cuda.jit()(Conv1dFun)
+
+
 
 _tensor_conv1d_cuda_jit = jit(_tensor_conv1d_cuda)
 

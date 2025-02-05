@@ -42,11 +42,16 @@ def index_to_position(index: Index, strides: Strides) -> int:
     Returns:
         Position in storage
     """
-    ret = 0
-    for i in range(index.shape[0]):
-        delta = int(index[i]) * int(strides[i])
-        ret += delta
-    return ret
+    # ret = 0
+    # for i in range(len(index.shape)):
+    # # for i in range(index.shape[0]):
+    #     delta = int(index[i]) * int(strides[i])
+    #     ret += delta
+    # return ret
+    position = 0
+    for i, stride in zip(index, strides):
+        position += int(i * stride)
+    return position
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -207,6 +212,7 @@ class TensorData:
         assert len(self._storage) == self.size, f"{len(self._storage)=}, {self.size}="
 
     def to_cuda_(self) -> None:  # pragma: no cover
+        # pass
         if not numba.cuda.is_cuda_array(self._storage):
             self._storage = numba.cuda.to_device(self._storage)
 
@@ -301,7 +307,6 @@ class TensorData:
                     break
             s += l
             v = self.get(index)
-            # print(f"===lizhi {index=} {v=}")
             s += f"{v:3.2f}"
             l = ""
             for i in range(len(index) - 1, -1, -1):

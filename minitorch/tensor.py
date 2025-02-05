@@ -265,7 +265,6 @@ class Tensor:
         backend: Optional[TensorBackend] = None,
     ) -> Tensor:
         "Create a new tensor from data"
-        print(f"===lizhi {storage=} {shape=} {strides=}")
         return Tensor(TensorData(storage, shape, strides), backend=backend)
 
     def expand(self, other: Tensor) -> Tensor:

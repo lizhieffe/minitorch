@@ -6,6 +6,8 @@ import minitorch
 from datasets import load_dataset
 
 BACKEND = minitorch.TensorBackend(minitorch.FastOps)
+BACKEND = minitorch.TensorBackend(minitorch.CudaOps)
+
 
 
 def RParam(*shape):
@@ -268,16 +270,19 @@ if __name__ == "__main__":
     train_size = 450
     validation_size = 100
     learning_rate = 0.01
-    max_epochs = 250
+    max_epochs = 750
+    d_emb = 300         # supported values are 50, 100, 200, 300
+    feature_map_size = 600
+
 
     (X_train, y_train), (X_val, y_val) = encode_sentiment_data(
         load_dataset("glue", "sst2"),
-        embeddings.GloveEmbedding("wikipedia_gigaword", d_emb=50, show_progress=True),
+        embeddings.GloveEmbedding("wikipedia_gigaword", d_emb=d_emb, show_progress=True),
         train_size,
         validation_size,
     )
     model_trainer = SentenceSentimentTrain(
-        CNNSentimentKim(feature_map_size=100, filter_sizes=[3, 4, 5], dropout=0.0)
+        CNNSentimentKim(embedding_size=d_emb, feature_map_size=feature_map_size, filter_sizes=[3, 4, 5], dropout=0.0)
     )
     model_trainer.train(
         (X_train, y_train),

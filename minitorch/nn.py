@@ -149,17 +149,17 @@ def avgpool2d(input: Tensor, kernel: Tuple[int, int]) -> Tensor:
       output = tiled.mean(4).contiguous().view(batch, channels, new_h, new_w)
       return output
 
-max_reduce_fn = FastOps.reduce(operators.max)
+# max_reduce_fn = FastOps.reduce(operators.max)
 
 def argmax(a: Tensor, dim: int) -> Tensor:
-    max_a = max_reduce_fn(a, dim)
+    max_a = a.f.max_reduce(a, dim)
     return max_a == a
 
 class Max(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Tensor) -> Tensor:
         ctx.save_for_backward(a, int(dim.item()))
-        return max_reduce_fn(a, int(dim.item()))
+        return a.f.max_reduce(a, int(dim.item()))
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
