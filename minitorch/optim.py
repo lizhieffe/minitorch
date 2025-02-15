@@ -29,6 +29,5 @@ class SGD(Optimizer):
             if p.value is None:
                 continue
             elif hasattr(p.value, "grad"):
-                # print(f"===lizhi optim updating {p.value.unique_id=} {p.value.is_leaf()=} {p.value.is_constant()=} {p.value.grad=} {p.value._tensor._storage=}")
                 if p.value.grad is not None:
                     p.update(p.value - self.lr * p.value.grad)

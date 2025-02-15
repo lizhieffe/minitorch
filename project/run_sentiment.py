@@ -158,6 +158,7 @@ class SentenceSentimentTrain:
                 range(0, n_training_samples, batch_size)
             ):
                 optim.zero_grad()
+
                 y = minitorch.tensor(
                     y_train[example_num : example_num + batch_size], backend=BACKEND
                 )
@@ -271,8 +272,8 @@ if __name__ == "__main__":
     validation_size = 100
     learning_rate = 0.01
     max_epochs = 750
-    d_emb = 300         # supported values are 50, 100, 200, 300
-    feature_map_size = 600
+    d_emb = 50         # supported values are 50, 100, 200, 300
+    feature_map_size = 100
 
 
     (X_train, y_train), (X_val, y_val) = encode_sentiment_data(

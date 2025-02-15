@@ -102,7 +102,10 @@ class Tensor:
         self.f = backend
 
     def requires_grad_(self, x: bool) -> None:
-        self.history = History()
+        if x:
+            self.history = History()
+        else:
+            self.history = None
 
     def requires_grad(self) -> bool:
         return self.history is not None
@@ -340,13 +343,14 @@ class Tensor:
 
     def accumulate_derivative(self, x: Any) -> None:
         """
-        Add `val` to the the derivative accumulated on this variable.
+        Add `val` to the derivative accumulated on this variable.
         Should only be called during autodifferentiation on leaf variables.
 
         Args:
             x : value to be accumulated
         """
         assert self.is_leaf(), "Only leaf variables can have derivatives."
+        assert not self.is_constant()
         if self.grad is None:
             
             self.grad = Tensor.make(
