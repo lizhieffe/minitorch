@@ -140,19 +140,23 @@ class FastOps(TensorOps):
 
     @staticmethod
     def conv1d(
-        out: Storage,
-        out_shape: Shape,
-        out_strides: Strides,
-        out_size: int,
-        input: Storage,
-        input_shape: Shape,
-        input_strides: Strides,
-        weight: Storage,
-        weight_shape: Shape,
-        weight_strides: Strides,
+        out: Tensor,
+        input: Tensor,
+        weight: Tensor,
+        # out: Storage,
+        # out_shape: Shape,
+        # out_strides: Strides,
+        # out_size: int,
+        # input: Storage,
+        # input_shape: Shape,
+        # input_strides: Strides,
+        # weight: Storage,
+        # weight_shape: Shape,
+        # weight_strides: Strides,
         reverse: bool,
     ) -> None:
-        tensor_conv1d(out, out_shape, out_strides, out_size, input, input_shape, input_strides, weight, weight_shape, weight_strides, reverse)
+        # tensor_conv1d(out, out_shape, out_strides, out_size, input, input_shape, input_strides, weight, weight_shape, weight_strides, reverse)
+        tensor_conv1d(*out.tuple(), out.size, *input.tuple(), *weight.tuple(), reverse)
 
 # Implementations
 

@@ -130,7 +130,7 @@ class Tensor:
     def size(self) -> int:
         """
         Returns:
-             int : size of the tensor
+             int : size of the tensor. The length of the shape flatten to 1D array.
         """
         return self._tensor.size
 

@@ -29,7 +29,7 @@ from .tensor_data import (
     to_index,
 )
 from .tensor_ops import MapProto, TensorOps
-from .cuda_conv import tensor_conv1d_cuda
+from .cuda_conv import tensor_conv1d_cuda, tensor_conv1d_cudnn
 
 FakeCUDAKernel = Any
 
@@ -155,21 +155,28 @@ class CudaOps(TensorOps):
 
     @staticmethod
     def conv1d(
-            out: Storage,
-            out_shape: Shape,
-            out_strides: Strides,
-            out_size: int,
-            input: Storage,
-            input_shape: Shape,
-            input_strides: Strides,
-            weight: Storage,
-            weight_shape: Shape,
-            weight_strides: Strides,
+            # out: Storage,
+            # out_shape: Shape,
+            # out_strides: Strides,
+            # out_size: int,
+            # input: Storage,
+            # input_shape: Shape,
+            # input_strides: Strides,
+            # weight: Storage,
+            # weight_shape: Shape,
+            # weight_strides: Strides,
+            out: Tensor,
+            input: Tensor,
+            weight: Tensor,
             reverse: bool,
     ) -> None:
-        # print(f"===lizhi cuda_ops {type(out)=}")
-        # traceback.print_stack(file=sys.stdout)
-        tensor_conv1d_cuda(out, out_shape, out_strides, out_size, input, input_shape, input_strides, weight, weight_shape, weight_strides, reverse)
+        if reverse:
+            tensor_conv1d_cuda(*out.tuple(), out.size, *input.tuple(), *weight.tuple(), reverse)
+        else:
+            # tensor_conv1d_cuda(*out.tuple(), out.size, *input.tuple(), *weight.tuple(), reverse)
+            # cudnn doesn't support reverse
+            tensor_conv1d_cudnn(out, input, weight)
+
 
     @staticmethod
     def conv1d_cudnn(
@@ -177,8 +184,7 @@ class CudaOps(TensorOps):
             input: Tensor,
             weight: Tensor,
     ) -> None:
-        """The cudnn conv doesn't have a config to support reverse."""
-        raise NotImplementedError("Not implemented in this assignment")
+        tensor_conv1d_cudnn(out, input, weight)
 
 # Implement
 

@@ -1,6 +1,5 @@
 import pytest
 from hypothesis import given, settings
-import cudnn
 
 import minitorch
 from minitorch import Tensor, SimpleBackend
@@ -12,13 +11,23 @@ FastTensorBackend = minitorch.TensorBackend(minitorch.FastOps)
 CudaTensorBackend = minitorch.TensorBackend(minitorch.CudaOps)
 
 
+# @pytest.mark.task4_1
+# def test_conv1d_simple_00() -> None:
+#     t = minitorch.tensor([0, 1], backend=CudaTensorBackend).view(1, 1, 2)
+#     t.requires_grad_(True)
+#     t2 = minitorch.tensor([[1, 2, 3]], backend=CudaTensorBackend).view(3, 1, 1)
+#     out = minitorch.conv1d(t, t2)
+#
+#     print(f"===lizhi {t=} {t2=} {out=}")
+#
+#     assert out[0, 0, 0] == 0 * 1 + 1 * 2 + 2 * 3
+#     assert out[0, 0, 1] == 1 * 1 + 2 * 2 + 3 * 3
+#     assert out[0, 0, 2] == 2 * 1 + 3 * 2
+#     assert out[0, 0, 3] == 3 * 1
+
+
 @pytest.mark.task4_1
 def test_conv1d_simple_0() -> None:
-    print(cudnn.backend_version())
-    handle = cudnn.create_handle()
-
-
-
     t = minitorch.tensor([0, 1, 2, 3], backend=CudaTensorBackend).view(1, 1, 4)
     t.requires_grad_(True)
     t2 = minitorch.tensor([[1, 2, 3]], backend=CudaTensorBackend).view(1, 1, 3)
@@ -50,7 +59,9 @@ def test_conv1d_simple_1() -> None:
 
 @pytest.mark.task4_1
 @given(tensors(shape=(2, 2, 6), backend=FastTensorBackend), tensors(shape=(3, 2, 2), backend=FastTensorBackend))
-@settings(max_examples=3)
+# @settings(max_examples=3)
+# @given(tensors(shape=(1, 1, 2), backend=FastTensorBackend), tensors(shape=(2, 1, 1), backend=FastTensorBackend))
+@settings(max_examples=30)
 def test_conv1d_simple_2(input: Tensor, weight: Tensor) -> None:
     out = minitorch.conv1d(input, weight)
 

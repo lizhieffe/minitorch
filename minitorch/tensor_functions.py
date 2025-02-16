@@ -308,7 +308,8 @@ class Conv1d(Function):
         # Run convolution
         output = zeros((batch, out_channels, w))
 
-        input.f.conv1d(*output.tuple(), output.size, *input.tuple(), *weight.tuple(), False)
+        # input.f.conv1d(*output.tuple(), output.size, *input.tuple(), *weight.tuple(), False)
+        input.f.conv1d(output, input, weight, False)
         # input.f.conv1d_cudnn(output, input, weight)
 
         return output
@@ -322,11 +323,17 @@ class Conv1d(Function):
         new_input = input.permute(1, 0, 2)
         new_grad_output = grad_output.permute(1, 0, 2)
 
+        # input.f.conv1d(
+        #     *grad_weight.tuple(),
+        #     grad_weight.size,
+        #     *new_input.tuple(),
+        #     *new_grad_output.tuple(),
+        #     False,
+        # )
         input.f.conv1d(
-            *grad_weight.tuple(),
-            grad_weight.size,
-            *new_input.tuple(),
-            *new_grad_output.tuple(),
+            grad_weight,
+            new_input,
+            new_grad_output,
             False,
         )
 
@@ -334,7 +341,8 @@ class Conv1d(Function):
 
         grad_input = input.zeros((batch, in_channels, w))
         new_weight = weight.permute(1, 0, 2)
-        input.f.conv1d(*grad_input.tuple(), grad_input.size, *grad_output.tuple(), *new_weight.tuple(), True)
+        # input.f.conv1d(*grad_input.tuple(), grad_input.size, *grad_output.tuple(), *new_weight.tuple(), True)
+        input.f.conv1d(grad_input, grad_output, new_weight, True)
 
         return grad_input, grad_weight
 

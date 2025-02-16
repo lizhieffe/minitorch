@@ -7,7 +7,9 @@ from typing import Callable, Optional, TypeVar, Any, Tuple
 
 import cudnn
 import numba
+import numpy as np
 import torch
+import torch.nn.functional as F
 
 # Required to use cuda in numba. https://github.com/googlecolab/colabtools/issues/5081
 from numba import config
@@ -48,9 +50,9 @@ def jit(fn, **kwargs) -> FakeCUDAKernel:
     return _jit(**kwargs)(fn)  # type: ignore
 
 
-to_index = device_jit(to_index)
-index_to_position = device_jit(index_to_position)
-broadcast_index = device_jit(broadcast_index)
+# to_index = device_jit(to_index)
+# index_to_position = device_jit(index_to_position)
+# broadcast_index = device_jit(broadcast_index)
 
 # Cuda has limit of max 1024 threads per block. Here we set this to 8 because we are building 3D block.
 THREADS_PER_BLOCK = 8
@@ -364,69 +366,81 @@ def tensor_conv1d_cuda(
         out, out_shape, out_strides, out_size, input, input_shape, input_strides, weight, weight_shape, weight_strides, reverse
     )
 
+def tensor_conv1d_cudnn(
+    out: Tensor,
+    input: Tensor,
+    weight: Tensor,
+) -> None:
+    """
+        input: batch x in_channels x w
+        weight : out_channel x in_channel x kw
 
+    Returns:
+        batch x out_channel x w
+    """
+    _, weight_shape, _ = weight.tuple()
+    handle = cudnn.create_handle()
 
+    graph = cudnn.pygraph(
+        handle=handle,
+        name="cudnn_graph_0",
+        io_data_type=cudnn.data_type.DOUBLE,
+        compute_data_type=cudnn.data_type.DOUBLE,
+    )
 
-# def tensor_conv1d_cuda(
-#     out: Storage,
-#     out_shape: Shape,
-#     out_strides: Strides,
-#     out_size: int,
-#     input: Storage,
-#     input_shape: Shape,
-#     input_strides: Strides,
-#     weight: Storage,
-#     weight_shape: Shape,
-#     weight_strides: Strides,
-#     reverse: bool,
-# ) -> None:
-#     handle = cudnn.create_handle()
-#
-#     graph = cudnn.pygraph(
-#         handle=handle,
-#         name="cudnn_graph_0",
-#         io_data_type=cudnn.data_type.HALF,
-#         compute_data_type=cudnn.data_type.FLOAT,
-#     )
-#     print(f"{input_shape.tolist()=}")
-#     x_gt = graph.tensor(
-#         name="X",
-#         dim=input_shape.tolist(),
-#         stride=input_strides.tolist(),
-#         data_type=cudnn.data_type.HALF,
-#     )
-#     w_gt = graph.tensor(
-#         name="W",
-#         dim=weight_shape.tolist(),
-#         stride=weight_strides.tolist(),
-#     )
-#     y_gt = graph.conv_fprop(
-#         x_gt,
-#         w_gt,
-#         padding=[1],
-#         stride=[1],
-#         dilation=[1],
-#         compute_data_type=cudnn.data_type.FLOAT,
-#     )
-#     y_gt.set_output(True)
-#
-#     x = input.to_numpy()
-#
-#     graph.build([cudnn.heur_mode.A])
-#
-#     workspace = torch.empty(graph.get_workspace_size(), device="cuda", dtype=torch.uint8)
-#
-#     # Y_gpu = torch.zeros(
-#     #     *out.shape, requires_grad=False,  dtype=torch.float16
-#     # )
-#     # # ).to(memory_format=torch.channels_last)
-#     # graph.execute({x_gt: input, w_gt: weight, y_gt: Y_gpu}, workspace, handle=handle)
-#     # print(f"===lizhi {input=} {weight=} {Y_gpu=}")
-#
-#     graph.execute({x_gt: input, w_gt: weight, y_gt: out}, workspace, handle=handle)
-#     print(f"===lizhi {input=} {weight=} {out=}")
-#     print(f"===lizhi {input_shape=} {weight_shape=} {out_shape=}")
-#     print(f"===lizhi {input_strides=} {weight_strides=} {out_strides=}")
+    out_storage, out_shape, out_stride = out.tuple()
+
+    # cudnn doesn't support padding on right side only. Here we manually pad.
+    input_torch = torch.tensor(input.to_numpy(), requires_grad=False, device="cuda", dtype=torch.float64)
+    padding = (0, weight_shape[-1] - 1)     # The left and right # of padding of the last dim.
+    input_torch = F.pad(input_torch, padding, mode='constant', value=0)
+    print(f"===lizhi {input_torch=}")
+    input_torch = input_torch.unsqueeze(3).to(memory_format=torch.channels_last)
+    print(f"===lizhi {input_torch.shape=} {input_torch.stride()=}")
+
+    weight_torch = torch.tensor(weight.to_numpy(), requires_grad=False, device="cuda", dtype=torch.float64)
+    # weight_torch = weight_torch.transpose(0,1)
+    print(f"===lizhi {weight_torch=}")
+    weight_torch = weight_torch.unsqueeze(3).to(memory_format=torch.channels_last)
+    print(f"===lizhi {weight_torch.shape=} {weight_torch.stride()=}")
+
+    out_torch = torch.zeros(*out_shape.tolist(), requires_grad=False, device="cuda", dtype=torch.float64)
+    out_torch = out_torch.unsqueeze(3).to(memory_format=torch.channels_last)
+
+    x_gt = graph.tensor(
+        name="X",
+        dim=input_torch.shape,
+        stride=input_torch.stride(),
+        # data_type=cudnn.data_type.DOUBLE,
+    )
+    w_gt = graph.tensor(
+        name="W",
+        dim=weight_torch.shape,
+        stride=weight_torch.stride(),
+    )
+    y_gt = graph.conv_fprop(
+        x_gt,
+        w_gt,
+        padding=[0, 0],
+        stride=[1, 1],
+        dilation=[1, 1],
+        compute_data_type=cudnn.data_type.DOUBLE,
+    )
+    y_gt.set_output(True)
+
+    graph.build([cudnn.heur_mode.A])
+    workspace = torch.empty(graph.get_workspace_size(), device="cuda", dtype=torch.uint8)
+    graph.execute({x_gt: input_torch, w_gt: weight_torch, y_gt: out_torch}, workspace, handle=handle)
+
+    out_torch_cpu = out_torch.squeeze(dim=3).cpu().detach().numpy()
+    print(f"===lizhi cuda_conv {out_torch_cpu.shape=} {out_torch_cpu=}")
+    idx = np.ndarray(len(out_shape.tolist()), dtype=np.int32)
+    for i in range(out.size):
+        to_index(i, out_shape, idx)
+        out_pos = index_to_position(idx, out_stride)
+        print(f"===lizhi {idx=} {out_torch_cpu[*idx]=} {out_pos=} ")
+        out_storage[out_pos] = out_torch_cpu[*idx]
+
 
 #######################################################################################################################
 #######################################################################################################################

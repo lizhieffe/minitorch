@@ -51,28 +51,31 @@ class TensorOps:
 
     @staticmethod
     def conv1d(
-        out: Storage,
-        out_shape: Shape,
-        out_strides: Strides,
-        out_size: int,
-        input: Storage,
-        input_shape: Shape,
-        input_strides: Strides,
-        weight: Storage,
-        weight_shape: Shape,
-        weight_strides: Strides,
+        # out: Storage,
+        # out_shape: Shape,
+        # out_strides: Strides,
+        # out_size: int,
+        # input: Storage,
+        # input_shape: Shape,
+        # input_strides: Strides,
+        # weight: Storage,
+        # weight_shape: Shape,
+        # weight_strides: Strides,
+        out: Tensor,
+        input: Tensor,
+        weight: Tensor,
         reverse: bool,
     ) -> None:
         raise NotImplementedError("Not implemented in this assignment")
 
-    @staticmethod
-    def conv1d_cudnn(
-        out: Tensor,
-        input: Tensor,
-        weight: Tensor,
-    ) -> None:
-        """The cudnn conv doesn't have a config to support reverse."""
-        raise NotImplementedError("Not implemented in this assignment")
+    # @staticmethod
+    # def conv1d_cudnn(
+    #     out: Tensor,
+    #     input: Tensor,
+    #     weight: Tensor,
+    # ) -> None:
+    #     """The cudnn conv doesn't have a config to support reverse."""
+    #     raise NotImplementedError("Not implemented in this assignment")
 
     cuda = False
 
@@ -120,7 +123,6 @@ class TensorBackend:
         self.max_reduce = ops.reduce(operators.max)
         self.matrix_multiply = ops.matrix_multiply
         self.conv1d = ops.conv1d
-        self.conv1d_cudnn = ops.conv1d_cudnn
         self.cuda = ops.cuda
 
 
