@@ -394,15 +394,11 @@ def tensor_conv1d_cudnn(
     input_torch = torch.tensor(input.to_numpy(), requires_grad=False, device="cuda", dtype=torch.float64)
     padding = (0, weight_shape[-1] - 1)     # The left and right # of padding of the last dim.
     input_torch = F.pad(input_torch, padding, mode='constant', value=0)
-    print(f"===lizhi {input_torch=}")
     input_torch = input_torch.unsqueeze(3).to(memory_format=torch.channels_last)
-    print(f"===lizhi {input_torch.shape=} {input_torch.stride()=}")
 
     weight_torch = torch.tensor(weight.to_numpy(), requires_grad=False, device="cuda", dtype=torch.float64)
     # weight_torch = weight_torch.transpose(0,1)
-    print(f"===lizhi {weight_torch=}")
     weight_torch = weight_torch.unsqueeze(3).to(memory_format=torch.channels_last)
-    print(f"===lizhi {weight_torch.shape=} {weight_torch.stride()=}")
 
     out_torch = torch.zeros(*out_shape.tolist(), requires_grad=False, device="cuda", dtype=torch.float64)
     out_torch = out_torch.unsqueeze(3).to(memory_format=torch.channels_last)
@@ -433,12 +429,10 @@ def tensor_conv1d_cudnn(
     graph.execute({x_gt: input_torch, w_gt: weight_torch, y_gt: out_torch}, workspace, handle=handle)
 
     out_torch_cpu = out_torch.squeeze(dim=3).cpu().detach().numpy()
-    print(f"===lizhi cuda_conv {out_torch_cpu.shape=} {out_torch_cpu=}")
     idx = np.ndarray(len(out_shape.tolist()), dtype=np.int32)
     for i in range(out.size):
         to_index(i, out_shape, idx)
         out_pos = index_to_position(idx, out_stride)
-        print(f"===lizhi {idx=} {out_torch_cpu[*idx]=} {out_pos=} ")
         out_storage[out_pos] = out_torch_cpu[*idx]
 
 

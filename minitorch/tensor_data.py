@@ -42,6 +42,12 @@ def index_to_position(index: Index, strides: Strides) -> int:
     Returns:
         Position in storage
     """
+    # ret = 0
+    # for i in range(len(index.shape)):
+    # # for i in range(index.shape[0]):
+    #     delta = int(index[i]) * int(strides[i])
+    #     ret += delta
+    # return ret
     position = 0
     for i, stride in zip(index, strides):
         position += int(i * stride)

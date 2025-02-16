@@ -171,9 +171,13 @@ class CudaOps(TensorOps):
             reverse: bool,
     ) -> None:
         if reverse:
+            # Transfer to GPU
+            # out._type_(out.backend)
             tensor_conv1d_cuda(*out.tuple(), out.size, *input.tuple(), *weight.tuple(), reverse)
         else:
+            # out._type_(out.backend)
             # tensor_conv1d_cuda(*out.tuple(), out.size, *input.tuple(), *weight.tuple(), reverse)
+
             # cudnn doesn't support reverse
             tensor_conv1d_cudnn(out, input, weight)
 

@@ -306,11 +306,9 @@ class Conv1d(Function):
         assert in_channels == in_channels2
 
         # Run convolution
-        output = zeros((batch, out_channels, w))
+        output = zeros((batch, out_channels, w), backend=input.backend)
 
-        # input.f.conv1d(*output.tuple(), output.size, *input.tuple(), *weight.tuple(), False)
         input.f.conv1d(output, input, weight, False)
-        # input.f.conv1d_cudnn(output, input, weight)
 
         return output
 
