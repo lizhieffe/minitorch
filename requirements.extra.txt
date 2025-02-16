@@ -5,9 +5,12 @@ pydot==1.4.1
 python-mnist
 streamlit==1.12.0
 streamlit-ace
-torch
+torch==2.4.0
 watchdog==1.0.2
 altair==4.2.2
 networkx==3.3
 pandas==2.2.3
 scipy==1.15.1
+nvidia-cudnn-cu12
+nvidia-cudnn-frontend
+pynvjitlink-cu12

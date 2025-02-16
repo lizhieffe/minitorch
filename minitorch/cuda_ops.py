@@ -7,6 +7,9 @@ from typing import Callable, Optional, TypeVar, Any
 
 import numba
 
+import traceback
+import sys
+
 # Required to use cuda in numba. https://github.com/googlecolab/colabtools/issues/5081
 from numba import config
 config.CUDA_ENABLE_PYNVJITLINK = 1
@@ -164,7 +167,18 @@ class CudaOps(TensorOps):
             weight_strides: Strides,
             reverse: bool,
     ) -> None:
+        # print(f"===lizhi cuda_ops {type(out)=}")
+        # traceback.print_stack(file=sys.stdout)
         tensor_conv1d_cuda(out, out_shape, out_strides, out_size, input, input_shape, input_strides, weight, weight_shape, weight_strides, reverse)
+
+    @staticmethod
+    def conv1d_cudnn(
+            out: Tensor,
+            input: Tensor,
+            weight: Tensor,
+    ) -> None:
+        """The cudnn conv doesn't have a config to support reverse."""
+        raise NotImplementedError("Not implemented in this assignment")
 
 # Implement
 

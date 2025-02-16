@@ -1,5 +1,6 @@
 import pytest
 from hypothesis import given, settings
+import cudnn
 
 import minitorch
 from minitorch import Tensor, SimpleBackend
@@ -13,6 +14,11 @@ CudaTensorBackend = minitorch.TensorBackend(minitorch.CudaOps)
 
 @pytest.mark.task4_1
 def test_conv1d_simple_0() -> None:
+    print(cudnn.backend_version())
+    handle = cudnn.create_handle()
+
+
+
     t = minitorch.tensor([0, 1, 2, 3], backend=CudaTensorBackend).view(1, 1, 4)
     t.requires_grad_(True)
     t2 = minitorch.tensor([[1, 2, 3]], backend=CudaTensorBackend).view(1, 1, 3)
@@ -22,7 +28,9 @@ def test_conv1d_simple_0() -> None:
     assert out[0, 0, 1] == 1 * 1 + 2 * 2 + 3 * 3
     assert out[0, 0, 2] == 2 * 1 + 3 * 2
     assert out[0, 0, 3] == 3 * 1
-#
+
+
+
 @pytest.mark.task4_1
 def test_conv1d_simple_1() -> None:
     # input: `batch, in_channels, width`

@@ -2,9 +2,12 @@
 # Currently pyright doesn't support numba.cuda
 
 import time
+
 from typing import Callable, Optional, TypeVar, Any, Tuple
 
+import cudnn
 import numba
+import torch
 
 # Required to use cuda in numba. https://github.com/googlecolab/colabtools/issues/5081
 from numba import config
@@ -52,6 +55,9 @@ broadcast_index = device_jit(broadcast_index)
 # Cuda has limit of max 1024 threads per block. Here we set this to 8 because we are building 3D block.
 THREADS_PER_BLOCK = 8
 
+
+
+
 def _tensor_conv1d_cuda(
     out: Storage,
     out_shape: Shape,
@@ -66,11 +72,7 @@ def _tensor_conv1d_cuda(
     reverse: bool,
 ) -> None:
     """
-
-
     The grid x, y, z axis corresponds to the [B, T, COUT] dim of the output.
-
-
     """
 
     # Get shapes
@@ -363,6 +365,68 @@ def tensor_conv1d_cuda(
     )
 
 
+
+
+# def tensor_conv1d_cuda(
+#     out: Storage,
+#     out_shape: Shape,
+#     out_strides: Strides,
+#     out_size: int,
+#     input: Storage,
+#     input_shape: Shape,
+#     input_strides: Strides,
+#     weight: Storage,
+#     weight_shape: Shape,
+#     weight_strides: Strides,
+#     reverse: bool,
+# ) -> None:
+#     handle = cudnn.create_handle()
+#
+#     graph = cudnn.pygraph(
+#         handle=handle,
+#         name="cudnn_graph_0",
+#         io_data_type=cudnn.data_type.HALF,
+#         compute_data_type=cudnn.data_type.FLOAT,
+#     )
+#     print(f"{input_shape.tolist()=}")
+#     x_gt = graph.tensor(
+#         name="X",
+#         dim=input_shape.tolist(),
+#         stride=input_strides.tolist(),
+#         data_type=cudnn.data_type.HALF,
+#     )
+#     w_gt = graph.tensor(
+#         name="W",
+#         dim=weight_shape.tolist(),
+#         stride=weight_strides.tolist(),
+#     )
+#     y_gt = graph.conv_fprop(
+#         x_gt,
+#         w_gt,
+#         padding=[1],
+#         stride=[1],
+#         dilation=[1],
+#         compute_data_type=cudnn.data_type.FLOAT,
+#     )
+#     y_gt.set_output(True)
+#
+#     x = input.to_numpy()
+#
+#     graph.build([cudnn.heur_mode.A])
+#
+#     workspace = torch.empty(graph.get_workspace_size(), device="cuda", dtype=torch.uint8)
+#
+#     # Y_gpu = torch.zeros(
+#     #     *out.shape, requires_grad=False,  dtype=torch.float16
+#     # )
+#     # # ).to(memory_format=torch.channels_last)
+#     # graph.execute({x_gt: input, w_gt: weight, y_gt: Y_gpu}, workspace, handle=handle)
+#     # print(f"===lizhi {input=} {weight=} {Y_gpu=}")
+#
+#     graph.execute({x_gt: input, w_gt: weight, y_gt: out}, workspace, handle=handle)
+#     print(f"===lizhi {input=} {weight=} {out=}")
+#     print(f"===lizhi {input_shape=} {weight_shape=} {out_shape=}")
+#     print(f"===lizhi {input_strides=} {weight_strides=} {out_strides=}")
 
 #######################################################################################################################
 #######################################################################################################################

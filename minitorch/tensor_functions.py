@@ -299,15 +299,17 @@ class Conv1d(Function):
             batch x out_channel x h x w
 
         """
+
         ctx.save_for_backward(input, weight)
         batch, in_channels, w = input.shape
         out_channels, in_channels2, kw = weight.shape
         assert in_channels == in_channels2
 
         # Run convolution
-        output = input.zeros((batch, out_channels, w))
+        output = zeros((batch, out_channels, w))
 
         input.f.conv1d(*output.tuple(), output.size, *input.tuple(), *weight.tuple(), False)
+        # input.f.conv1d_cudnn(output, input, weight)
 
         return output
 
