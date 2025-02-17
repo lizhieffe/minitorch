@@ -54,9 +54,36 @@ broadcast_index = device_jit(broadcast_index)
 
 THREADS_PER_BLOCK = 32
 
+# The cuDNN integration passes the conv unit test, but it runs much slower for
+# the sentiment training job.
+#
+# The current impl uses python based FE; the input data to cuDNN is
+# converted to torch.Tensor on GPU first and then can trigger the cuDNN conv.
+# This is the example from the official tutorial:
+# https://github.com/NVIDIA/cudnn-frontend/blob/main/samples/python/00_introduction.ipynb
+#
+# It is likely the conversion to torch.Tensor caused the performance issue.
+#
+# We have tried to use the current framework's native tensor and convert it to
+# DLPack API and use with cuDNN. But it doesn't work. 
+# https://colab.research.google.com/drive/1GvzH-uZmk9bQvVvMpiR9gronh2BhQsSR#scrollTo=8zvLILWznQ38&uniqifier=1
+#
+# It is likely because the native tensor is on CPU and cuDNN conv doesn't work
+# with CPU input data. To verify this, we tried to use torch.Tensor on CPU and
+# it indeed doesn't work.
+# https://colab.research.google.com/drive/1D9Etx4wFt8ElHWM6kGdqD_dZDnN43agO
+#
+# We can use Numba to move the native tensor to GPU, but the converted data
+# doesn't implement the DLPack API which is required by the cuDNN. And we cannot
+# find another python based framework to move data to GPU.
+#
+# To move forward, I think we should look into C++ implementation instead. The
+# python FE for cuDNN are limited.
+USE_CUDNN = False
 
 class CudaOps(TensorOps):
     cuda = True
+    
 
     @staticmethod
     def map(fn: Callable[[float], float]) -> MapProto:
@@ -155,40 +182,20 @@ class CudaOps(TensorOps):
 
     @staticmethod
     def conv1d(
-            # out: Storage,
-            # out_shape: Shape,
-            # out_strides: Strides,
-            # out_size: int,
-            # input: Storage,
-            # input_shape: Shape,
-            # input_strides: Strides,
-            # weight: Storage,
-            # weight_shape: Shape,
-            # weight_strides: Strides,
             out: Tensor,
             input: Tensor,
             weight: Tensor,
             reverse: bool,
     ) -> None:
         if reverse:
-            # Transfer to GPU
-            # out._type_(out.backend)
+            # cudnn doesn't have a reverse arg. So we use the Numba Cuda.
             tensor_conv1d_cuda(*out.tuple(), out.size, *input.tuple(), *weight.tuple(), reverse)
         else:
-            # out._type_(out.backend)
-            # tensor_conv1d_cuda(*out.tuple(), out.size, *input.tuple(), *weight.tuple(), reverse)
+            if USE_CUDNN:
+                tensor_conv1d_cudnn(out, input, weight)
+            else:
+                tensor_conv1d_cuda(*out.tuple(), out.size, *input.tuple(), *weight.tuple(), reverse)
 
-            # cudnn doesn't support reverse
-            tensor_conv1d_cudnn(out, input, weight)
-
-
-    @staticmethod
-    def conv1d_cudnn(
-            out: Tensor,
-            input: Tensor,
-            weight: Tensor,
-    ) -> None:
-        tensor_conv1d_cudnn(out, input, weight)
 
 # Implement
 

@@ -235,11 +235,9 @@ class View(Function):
         ctx.save_for_backward(a.shape)
         assert a._tensor.is_contiguous(), "Must be contiguous to view"
         shape2 = [int(shape[i]) for i in range(shape.size)]
-        # print(f"===lizhi {shape=} {shape2=}")
         ret = minitorch.Tensor.make(
             a._tensor._storage, tuple(shape2), backend=a.backend
         )
-        # print(f"===lizhi {shape=} {shape2=}  {ret.tuple()[1]=} {ret.tuple()[2]=}")
         return ret
 
     @staticmethod
@@ -321,13 +319,6 @@ class Conv1d(Function):
         new_input = input.permute(1, 0, 2)
         new_grad_output = grad_output.permute(1, 0, 2)
 
-        # input.f.conv1d(
-        #     *grad_weight.tuple(),
-        #     grad_weight.size,
-        #     *new_input.tuple(),
-        #     *new_grad_output.tuple(),
-        #     False,
-        # )
         input.f.conv1d(
             grad_weight,
             new_input,
@@ -339,7 +330,6 @@ class Conv1d(Function):
 
         grad_input = input.zeros((batch, in_channels, w))
         new_weight = weight.permute(1, 0, 2)
-        # input.f.conv1d(*grad_input.tuple(), grad_input.size, *grad_output.tuple(), *new_weight.tuple(), True)
         input.f.conv1d(grad_input, grad_output, new_weight, True)
 
         return grad_input, grad_weight
