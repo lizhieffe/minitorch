@@ -2,7 +2,7 @@
 # Currently pyright doesn't support numba.cuda
 
 import time
-
+import ctypes
 from typing import Callable, Optional, TypeVar, Any, Tuple
 
 import cudnn
@@ -434,6 +434,13 @@ def tensor_conv1d_cudnn(
         to_index(i, out_shape, idx)
         out_pos = index_to_position(idx, out_stride)
         out_storage[out_pos] = out_torch_cpu[*idx]
+
+
+    # """Converts a PyTorch tensor's storage to a NumPy array."""
+    # out_torch_cpu = out_torch.squeeze(dim=3).cpu()
+    # buffer = ctypes.string_at(out_torch_cpu.data_ptr(), out_torch_cpu.storage().nbytes())
+    # array = np.frombuffer(buffer, dtype=np.float64).copy() # Use copy to avoid shared memory issues
+    # np.copyto(out_storage, array)
 
 
 #######################################################################################################################
